@@ -493,14 +493,59 @@ function initAiBrowser(windowElement: HTMLDivElement): void {
 }
 // --- Event Listeners Setup ---
 
-icons.forEach(icon => {
-    icon.addEventListener('click', () => {
+let draggingIcon: HTMLElement | null = null;
+let iconOffsetX = 0;
+let iconOffsetY = 0;
+let isIconDragging = false;
+
+icons.forEach((icon) => {
+    icon.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Only left click
+        draggingIcon = icon;
+        
+        const rect = icon.getBoundingClientRect();
+        iconOffsetX = e.clientX - rect.left;
+        iconOffsetY = e.clientY - rect.top;
+        isIconDragging = false;
+        
+        if (icon.style.position !== 'absolute') {
+            icon.style.position = 'absolute';
+            icon.style.left = `${rect.left}px`;
+            icon.style.top = `${rect.top}px`;
+            icon.style.margin = '0';
+        }
+    });
+
+    icon.addEventListener('click', (e) => {
+        if (isIconDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         const appName = icon.getAttribute('data-app');
         if (appName) {
             openApp(appName);
             startMenu.classList.remove('active');
         }
     });
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (draggingIcon) {
+        isIconDragging = true;
+        let newX = e.clientX - iconOffsetX;
+        let newY = e.clientY - iconOffsetY;
+        draggingIcon.style.left = `${newX}px`;
+        draggingIcon.style.top = `${newY}px`;
+        draggingIcon.style.zIndex = '100';
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    if (draggingIcon) {
+        draggingIcon.style.zIndex = '';
+        draggingIcon = null;
+    }
 });
 
 document.querySelectorAll('.start-menu-item').forEach(item => {
@@ -585,6 +630,18 @@ document.addEventListener('click', (e) => {
 function findIconElement(appName: string): HTMLDivElement | undefined {
     return Array.from(icons).find(icon => icon.dataset.app === appName);
 }
+
+function updateClock() {
+    const clockEl = document.getElementById('taskbar-clock');
+    if (clockEl) {
+        const now = new Date();
+        const timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+        const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+        clockEl.innerHTML = `${now.toLocaleDateString(undefined, dateOptions)}<br>${now.toLocaleTimeString(undefined, timeOptions)}`;
+    }
+}
+setInterval(updateClock, 1000);
+updateClock();
 
 console.log("Gemini 95 Simulator Initialized (TS)");
 
